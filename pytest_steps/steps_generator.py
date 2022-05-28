@@ -7,6 +7,7 @@ try:
 except ImportError:
     from collections import Iterable as It
 
+import warnings
 from makefun import add_signature_parameters, wraps
 from wrapt import ObjectProxy
 
@@ -413,7 +414,8 @@ class StepMonitorsContainer(dict):
 GENERATOR_MODE_STEP_ARGNAME = "________step_name_"
 
 
-def get_generator_decorator(steps  # type: Iterable[Any]
+def get_generator_decorator(steps,  # type: Iterable[Any]
+                            steps_delayed: bool
                             ):
     """
     Subroutine of `test_steps` used to perform the test function parametrization when mode is 'generator'.
@@ -508,6 +510,12 @@ def get_generator_decorator(steps  # type: Iterable[Any]
 
         # finally apply parametrizer
         parametrized_step_function_wrapper = parametrizer(wrapped_test_function)
+
+        if steps_delayed:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pytest.mark.steps_delayed(wrapped_test_function)
+
         return parametrized_step_function_wrapper
 
     return steps_decorator

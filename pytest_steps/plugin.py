@@ -3,8 +3,10 @@
 #
 # License: 3-clause BSD, <https://github.com/smarie/python-pytest-steps/blob/master/LICENSE>
 import pytest
+from collections import defaultdict, deque
+from pytest import Session
 from pytest_steps.steps import cross_steps_fixture
-from pytest_steps.steps_generator import one_fixture_per_step
+from pytest_steps.steps_generator import one_fixture_per_step, GENERATOR_MODE_STEP_ARGNAME
 
 try:
     from pytest_steps import pivot_steps_on_df, handle_steps_in_results_df
@@ -51,3 +53,30 @@ else:
         Provides a cross-step pytest-harvest "results_bag" for explicit mode
         """
         return results_bag
+
+
+def pytest_collection_finish(session: Session):
+    items_reordered = []
+    delayed_steps = defaultdict(deque)
+
+    def process_delayed_steps():
+        while delayed_steps:
+            for origname in list(delayed_steps):
+                if not delayed_steps[origname]:
+                    del delayed_steps[origname]
+                    continue
+                items_reordered.append(delayed_steps[origname].popleft())
+
+    for item in session.items:
+        if item.get_closest_marker('steps_delayed'):
+            steps_id_index = list(item.callspec.params).index(GENERATOR_MODE_STEP_ARGNAME)
+            steps_group_key = (
+                item.originalname,
+                *(i for n, i in enumerate(item.callspec._idlist) if n != steps_id_index)
+            )
+            delayed_steps[steps_group_key].append(item)
+        else:
+            process_delayed_steps()
+            items_reordered.append(item)
+    process_delayed_steps()
+    session.items = items_reordered

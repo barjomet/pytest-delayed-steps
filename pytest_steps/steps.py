@@ -31,7 +31,8 @@ if version_info >= (3, 0):
     new_sig = """(*steps,
                   mode: str = TEST_STEP_MODE_AUTO,
                   test_step_argname: str = TEST_STEP_ARGNAME_DEFAULT,
-                  steps_data_holder_name: str = STEPS_DATA_HOLDER_NAME_DEFAULT)"""
+                  steps_data_holder_name: str = STEPS_DATA_HOLDER_NAME_DEFAULT,
+                  delayed: bool = False)"""
 else:
     new_sig = None
 
@@ -64,12 +65,13 @@ def test_steps(*steps, **kwargs):
     step_mode = kwargs.pop('mode', TEST_STEP_MODE_AUTO)
     test_step_argname = kwargs.pop('test_step_argname', TEST_STEP_ARGNAME_DEFAULT)
     steps_data_holder_name = kwargs.pop('steps_data_holder_name', STEPS_DATA_HOLDER_NAME_DEFAULT)
+    steps_delayed = kwargs.pop('delayed', False)
     if len(kwargs) > 0:
         raise ValueError("Invalid argument(s): " + str(kwargs.keys()))
 
     # create decorator according to mode
     if step_mode == TEST_STEP_MODE_GENERATOR:
-        steps_decorator = get_generator_decorator(steps)
+        steps_decorator = get_generator_decorator(steps, steps_delayed)
 
     elif step_mode == TEST_STEP_MODE_PARAMETRIZER:
         steps_decorator = get_parametrize_decorator(steps, steps_data_holder_name, test_step_argname)
@@ -79,7 +81,7 @@ def test_steps(*steps, **kwargs):
         def steps_decorator(test_fun):
             # check if the function is a generator function or not
             if isgeneratorfunction(test_fun):
-                decorator = get_generator_decorator(steps)
+                decorator = get_generator_decorator(steps, steps_delayed)
             else:
                 decorator = get_parametrize_decorator(steps, steps_data_holder_name, test_step_argname)
 
